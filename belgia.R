@@ -69,50 +69,23 @@ geoCode <- function(address, verbose = FALSE) {
 # test
 geoCode("Aurubis Belgium") # dziala
 
-wsp2 <- data.frame(lon = rep(NA, 10), lat = rep(NA, 10), adr = rep(NA, 10), firma = firmy[1:10, 1])
+geoCode("Aurubis Helicopter")
 
-for (i in 1:10) {
+wsp2 <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130), adr = rep(NA, 130), firma = firmy[1:130, 1])
+
+for (i in 1:130) {
   geoc <- geoCode(paste(firmy[i, 1], "Belgium"))
   wsp2[i, 1] <- geoc[1]
   wsp2[i, 2] <- geoc[2]
   wsp2[i, 3] <- geoc[3]
 }
 
+wsp2$lon <- as.numeric(wsp2$lon)
+wsp2$lat <- as.numeric(wsp2$lat)
 
-
-
-
-geoCode("Aurubis")
-geoCode
-geoCode("Watertorenstraat 35, 2250 Olen")
-
-
-#  ------------------------------------------------------------------------
-
-
-
-getDocNodeVal=function(doc, path)
-{
-  sapply(getNodeSet(doc, path), function(el) xmlValue(el))
-}
-
-
-gGeoCode=function(str)
-{
-  library(XML)
-  u=paste('http://maps.google.com/maps/api/geocode/xml?sensor=false&address=',str)
-  doc = xmlTreeParse(u, useInternal=TRUE)
-  str=gsub(' ','%20',str)
-  lat=getDocNodeVal(doc, "/GeocodeResponse/result/geometry/location/lat")
-  lng=getDocNodeVal(doc, "/GeocodeResponse/result/geometry/location/lng")
-  list(lat = lat, lng = lng)
-}
-
-# test
-gGeoCode("Watertorenstraat 35, 2250 Olen")
-
-
-
+# geoCode("Aurubis")
+# geoCode
+# geoCode("Watertorenstraat 35, 2250 Olen")
 
 
 #  ------------------------------------------------------------------------
@@ -123,25 +96,16 @@ library(ggmap)
 library(ggplot2)
 
 geocode("Aurubis", output = "more")
-geocode("Belgium, Aurubis")
-geocode("Jana Pawla Poznan")
-geocode("Watertorenstraat 35, 2250 Olen")
-geocode("Aurubis")
-wsp <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130))
 
-for (i in 1:130) {
-  geoc <- geocode(firmy[i, 1])
-  wsp[i, 1] <- geoc[1]
-  wsp[i, 2] <- geoc[2]
-}
+geocode("Skytech", output = "more")
 
 
-qmap("Belgium", zoom = 5) + geom_point(data = wsp, aes(x = lon, y = lat), color = "red")
+qmap("Belgium")
+
+qmap("Belgium", zoom = 7) + geom_point(data = wsp2, 
+                                        aes(x = lat, y = lon), color = "red")
 
 qmap("Belgium", zoom = 18) + geom_point(aes(x = 4.469936, y = 50.503887), color = "red") # w adresie google jest najpierw druga wartosc
-
 qmap("Belgium", zoom = 8) + geom_point(aes(x = 4.8795559, y = 51.1773286), color = "red") # w adresie google jest najpierw druga wartosc
-
 qmap("Belgium", zoom = 10) + geom_point(aes(x = 4,        y = 50.83333,   color = "red") # w adresie google jest najpierw druga wartosc
-
 qmap("Aurubis Belgium", source = "cloudmade")
