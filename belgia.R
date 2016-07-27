@@ -71,6 +71,8 @@ geoCode("Aurubis Belgium") # dziala
 
 geoCode("Aurubis Helicopter")
 
+geoCode("Libeco-Lagae Belgium")
+
 wsp2 <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130), adr = rep(NA, 130), firma = firmy[1:130, 1])
 
 for (i in 1:130) {
@@ -90,6 +92,16 @@ wsp2$lat <- as.numeric(wsp2$lat)
 
 #  ------------------------------------------------------------------------
 
+wsp3 <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130), adr = rep(NA, 130), firma = firmy[1:130, 1])
+
+for (i in 80:130) {
+  geoc <- geoCode(paste(firmy[i, 1], "Belgium"))
+  wsp3[i, 1] <- geoc[1]
+  wsp3[i, 2] <- geoc[2]
+  wsp3[i, 3] <- geoc[3]
+}
+
+write.csv(wsp3, "wspolrzedne-firm2.csv", row.names = FALSE)
 
 
 library(ggmap)
