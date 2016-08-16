@@ -23,21 +23,7 @@ firmy <- t(as.data.table(firmy))
 
 
 
-# POBIERZ ADRES Z GOOGLE --------------------------------------------------
-
-#geocode("aurubis belgium", source = "dsk")
-
-
 # POBIERZ LAT LONG Z GOOGLE -----------------------------------------------
-
-
-# url <- function(address, return.call = "json" ) {
-#   root <- "https://maps.googleapis.com/maps/api/geocode/"
-#   key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
-#   u <- paste0(root, return.call, "?address=", address, "&components=country:BE", "&key=", key)
-#   return(URLencode(u))
-# }
-# 
 
 
 url <- function(address, return.call = "json") {
@@ -47,6 +33,14 @@ url <- function(address, return.call = "json") {
   return(URLencode(u))
 }
 
+#####
+# CO ZAWIERA POJEDYNCZE WYSZUKANIE
+u <- url("Aurubis Belgium")
+doc <- getURL(u)
+x <- fromJSON(doc, simplify = FALSE)
+x <- data.frame(unlist(x))
+write.csv(x, file = "Aurubis-Belgium.csv")
+#####
 
 
 geoCode <- function(address, verbose = FALSE) {
@@ -67,11 +61,9 @@ geoCode <- function(address, verbose = FALSE) {
 }
 
 # test
-geoCode("Aurubis Belgium") # dziala
-
-geoCode("Aurubis Helicopter")
-
-geoCode("Libeco-Lagae Belgium")
+# geoCode("Aurubis Belgium") # dziala
+# geoCode("Aurubis Helicopter")
+# geoCode("Libeco-Lagae Belgium")
 
 wsp2 <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130), adr = rep(NA, 130), firma = firmy[1:130, 1])
 
@@ -85,39 +77,154 @@ for (i in 1:130) {
 wsp2$lon <- as.numeric(wsp2$lon)
 wsp2$lat <- as.numeric(wsp2$lat)
 
-# geoCode("Aurubis")
-# geoCode
-# geoCode("Watertorenstraat 35, 2250 Olen")
+# zapisz koncowa baze z lat long firm z wiki
+write.csv(wsp2, "wspolrzedne-firm.csv", row.names = FALSE)
 
 
-#  ------------------------------------------------------------------------
+# ZNAJDZ POWIAZANE  -------------------------------------------------------
 
-wsp3 <- data.frame(lon = rep(NA, 130), lat = rep(NA, 130), adr = rep(NA, 130), firma = firmy[1:130, 1])
-
-for (i in 80:130) {
-  geoc <- geoCode(paste(firmy[i, 1], "Belgium"))
-  wsp3[i, 1] <- geoc[1]
-  wsp3[i, 2] <- geoc[2]
-  wsp3[i, 3] <- geoc[3]
+url <- function(address, return.call = "json") {
+  root <- "https://maps.googleapis.com/maps/api/place/autocomplete/"
+  key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
+  u <- paste0(root, return.call, "?input=", address, "&location=0,0", "&radius=20000000", "&types=establishment", "&key=", key)
+  return(URLencode(u))
 }
 
-write.csv(wsp3, "wspolrzedne-firm2.csv", row.names = FALSE)
+
+geoCode <- function(address, verbose = FALSE) {
+  if(verbose) cat(address, "\n)")
+  u <- url(address)
+  doc <- getURL(u)
+  x <- fromJSON(doc, simplify = FALSE)
+  if (x$status == "OK") {
+    nazwy <- rep(NA, length(x$predictions))
+    for (i in 1:length(x$predictions)) {
+      nazwy[i] <- c(x$predictions[[i]]$description)
+    }
+    return(nazwy)
+    Sys.sleep(0.5)
+  } else {
+    return(c(NA))
+  }
+}
+
+powiazane <- list()
+
+for (i in wsp2[, "firma"]) {
+  # print(i)
+  powiazane[[i]] <- geoCode(i)
+}
+
+powiazane2 <- powiazane[1:129]
 
 
-library(ggmap)
-library(ggplot2)
+# ZNAJDZ ICH GEOLOKALIZACJE ----------------------------------------------
 
-geocode("Aurubis", output = "more")
+# powinienem uzyc geocoding api
+# https://console.developers.google.com/apis/api/geocoding_backend/overview?project=linear-aviary-138408&hl=PL&duration=P30D
+# zamienia adresy na geolokalizacje
 
-geocode("Skytech", output = "more")
+# http://maps.googleapis.com/maps/api/geocode/
+
+url <- function(address, return.call = "json") {
+  root <- "https://maps.googleapis.com/maps/api/geocode/"
+  key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
+  u <- paste0(root, return.call, "?address=", address, "&key=", key)
+  return(URLencode(u))
+}
+
+geoCode <- function(address, verbose = FALSE) {
+  if(verbose) cat(address, "\n)")
+  u <- url(address)
+  doc <- getURL(u)
+  x <- fromJSON(doc, simplify = FALSE)
+  if (x$status == "OK") {
+    lat <- x$results[[1]]$geometry$location$lat
+    lon <- x$results[[1]]$geometry$location$lng
+    location_type <- x$results[[1]]$geometry$location_type
+    formatted_address <- x$results[[1]]$formatted_address
+    return(c(lat, lon, location_type, formatted_address))
+    Sys.sleep(0.5)
+  } else {
+    return(c(NA))
+  }
+}
+
+powiazane.unlist <- unlist(powiazane)
+
+wsp3 <- data.frame(lon = rep(NA, 483), lat = rep(NA, 483), adr = powiazane.unlist)
+
+#usun braki w powiazanych
+braki <- which(is.na(wsp3$adr))
+wsp3 <- wsp3[-braki, ]
+wsp3$adr <- as.character(wsp3$adr)
+
+for (i in 1:465) {
+  geoc <- geoCode(wsp3$adr[i])
+  wsp3[i, 1] <- geoc[1]
+  wsp3[i, 2] <- geoc[2]
+}
+
+wsp3$lon <- as.numeric(wsp3$lon)
+wsp3$lat <- as.numeric(wsp3$lat)
 
 
-qmap("Belgium")
+# zapisz koncowa baze z lat long firm (powiazanych) z wiki
+write.csv(wsp3, "wspolrzedne-firm-powiazanych.csv", row.names = FALSE)
 
-qmap("Belgium", zoom = 7) + geom_point(data = wsp2, 
-                                        aes(x = lat, y = lon), color = "red")
 
-qmap("Belgium", zoom = 18) + geom_point(aes(x = 4.469936, y = 50.503887), color = "red") # w adresie google jest najpierw druga wartosc
-qmap("Belgium", zoom = 8) + geom_point(aes(x = 4.8795559, y = 51.1773286), color = "red") # w adresie google jest najpierw druga wartosc
-qmap("Belgium", zoom = 10) + geom_point(aes(x = 4,        y = 50.83333,   color = "red") # w adresie google jest najpierw druga wartosc
-qmap("Aurubis Belgium", source = "cloudmade")
+
+
+# SPRWADZ API PLACES ------------------------------------------------------
+
+
+
+# NEARBYSEARCH ------------------------------------------------------------
+
+url <- function(address, return.call = "json") {
+  root <- "https://maps.googleapis.com/maps/api/place/nearbysearch/"
+  key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
+  u <- paste0(root, return.call, "?location=", address, "&rankby=distance", "&name=Aurubis", "&key=", key)
+  return(URLencode(u))
+}
+
+wspol <- as.name("51.1773286,4.8795559") # Aurubis
+u <- url(wspol)
+doc <- getURL(u)
+x <- fromJSON(doc, simplify = FALSE)
+nearbysearch <- data.frame(unlist(x))
+
+
+
+
+# TEXTSEARCH --------------------------------------------------------------
+
+url <- function(address, return.call = "json") {
+  root <- "https://maps.googleapis.com/maps/api/place/textsearch/"
+  key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
+  u <- paste0(root, return.call, "?query=", address, "&radius=50000", "&key=", key)
+  return(URLencode(u))
+}
+
+u <- url("Aurubis Belgium")
+doc <- getURL(u)
+x <- fromJSON(doc, simplify = FALSE)
+textsearch <- data.frame(unlist(x))
+
+
+
+# RADARSEARCH -------------------------------------------------------------
+
+url <- function(address, return.call = "json") {
+  root <- "https://maps.googleapis.com/maps/api/place/radarsearch/"
+  key = "AIzaSyAUaf4m_QsQqDG-LrK1ADNl06wJGcg8eag"
+  u <- paste0(root, return.call, "?location=", address, "&radius=50000", "&keyword=pharmaceutical", "&key=", key)
+  return(URLencode(u))
+}
+
+wspol <- as.name("51.1773286,4.8795559") # Aurubis
+u <- url(wspol)
+doc <- getURL(u)
+x <- fromJSON(doc, simplify = FALSE)
+radarsearch <- data.frame(unlist(x))
+
